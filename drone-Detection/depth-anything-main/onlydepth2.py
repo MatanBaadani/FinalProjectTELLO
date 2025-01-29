@@ -256,7 +256,7 @@ def process_frames(drone, model, transform, DEVICE, yaw_PID, model_obstacle, con
             objects, depth_3channel = detect_doors(depth_img)
             if objects:
                 for object in objects:
-
+# hello world
 
                 detected_door = objects[0]
                 x_center, y_center = detected_door["center"]
