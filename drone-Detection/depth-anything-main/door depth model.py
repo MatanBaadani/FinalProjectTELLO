@@ -91,7 +91,7 @@ depth_resized = np.zeros((input_height, input_width), dtype=np.uint8)  # All zer
 
 model= YOLO("best.pt").to(DEVICE)  # Load the YOLO model from the specified path
 class_names = ["open_door"]
-confidence = 0.80  # Confidence threshold for object detection
+confidence = 0.66  # Confidence threshold for object detection
 
 
 
@@ -161,8 +161,9 @@ while True:
     # Display the depth map and drone camera feed
     print(np.sum(depth_resized))
     depth_3channel = cv2.cvtColor(depth_resized, cv2.COLOR_GRAY2BGR)
+    depth_only = depth_3channel.copy()
     get_object_list_yolo(model, depth_3channel, class_names, confidence,draw=True,filter= False, filter_obj=[])  # Detect objects and draw on the frame
-    imgS=cvzone.stackImages([img_resized,depth_3channel],2,1)
+    imgS=cvzone.stackImages([img_resized,depth_only,depth_3channel],3,1)
     cv2.imshow("Image Stacked", imgS)
     # Press 'q' to exit
     if cv2.waitKey(1) & 0xFF == ord('q'):

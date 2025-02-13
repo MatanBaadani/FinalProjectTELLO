@@ -1,92 +1,98 @@
+import cv2
 import time
 import torch
-import cv2
-from ultralytics import YOLO
 import numpy as np
+import torch.nn.functional as F
+from depth_anything.dpt import DepthAnything
+from depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
+from torchvision.transforms import Compose
 
-# Create a function to time the YOLO inference on a given device
-def run_inference_on_device(device, model, image):
-    model.to(device)
-    image = image.to(device)  # Move image to the selected device
+# Constants
+INPUT_HEIGHT = 224
+INPUT_WIDTH = 224
+VIDEO_PATH = "1.mp4"  # Change this to your video path
 
-    # Start time for inference
-    start_time = time.time()
 
-    # Run inference (disable gradient calculations for inference)
+# Initialize Depth Anything model
+def initialize_depth_anything():
+    transform = Compose([
+        Resize(width=INPUT_WIDTH, height=INPUT_HEIGHT, resize_target=False, keep_aspect_ratio=False,
+               ensure_multiple_of=14, image_interpolation_method=cv2.INTER_AREA),
+        NormalizeImage(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        PrepareForNet(),
+    ])
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model = DepthAnything.from_pretrained('LiheYoung/depth_anything_vitl14').to(device)
+    return model.eval(), transform, device
+
+
+# Define f1
+def f1(img, model, transform, DEVICE):
+    imgcolor = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    input_size = (INPUT_WIDTH, INPUT_HEIGHT)
+    img_resized = cv2.resize(imgcolor, input_size, interpolation=cv2.INTER_LINEAR).astype(np.float32) / 255.0
+    img_transformed = transform({'image': img_resized})['image']
+    img_tensor = torch.from_numpy(img_transformed).unsqueeze(0).to(DEVICE, non_blocking=True)
+
     with torch.no_grad():
-        results = model(image, stream=False, verbose=False)
+        depth = model(img_tensor)
 
-    # End time for inference
-    end_time = time.time()
-
-    # Calculate and return the inference time
-    inference_time = end_time - start_time
-    return inference_time, results
+    depth_resized = F.interpolate(depth.unsqueeze(0), size=input_size, mode='bilinear', align_corners=False)[0, 0]
+    depth_resized = (depth_resized - depth_resized.min()) / (depth_resized.max() - depth_resized.min() + 1e-8)
+    depth_final = torch.clamp(depth_resized * 255, 0, 255).to(torch.uint8).cpu().numpy()
+    return depth_final
 
 
-# Function to process the video and compare CPU vs GPU performance
-def compare_performance_on_video(video_path):
-    # Open the video file
+# Define f2
+def f2(img, model, transform, DEVICE):
+    imgcolor = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img_resized = cv2.resize(imgcolor, (INPUT_WIDTH, INPUT_HEIGHT))
+    img_rgb = img_resized / 255.0
+    img_transformed = transform({'image': img_rgb})['image']
+    img_tensor = torch.from_numpy(img_transformed).unsqueeze(0).to(DEVICE)
+
+    with torch.no_grad():
+        depth = model(img_tensor)
+
+    depth_resized = F.interpolate(depth[None], (INPUT_HEIGHT, INPUT_WIDTH), mode='bilinear', align_corners=False)[0, 0]
+    depth_resized = (depth_resized - depth_resized.min()) / (depth_resized.max() - depth_resized.min()) * 255.0
+    depth_resized = depth_resized.cpu().numpy().astype(np.uint8)
+    return depth_resized
+
+
+# Function to measure average processing time per frame
+def measure_avg_time(video_path, func, model, transform, device):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print("Error: Could not open video.")
-        return
+        return None
 
-    # Get the video frames per second (fps)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-
-    # Load YOLO model
-    model = YOLO("best.pt").to("cpu")  # Load model on CPU initially
-
-    # Variables to store total time
-    cpu_total_time = 0
-    gpu_total_time = 0
+    total_time = 0
     frame_count = 0
 
-    # Process video frames on CPU
-    print("Processing video on CPU...")
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
-            break
+            break  # End of video
+
+        start_time = time.time()
+        _ = func(frame, model, transform, device)  # Run function on frame
+        total_time += (time.time() - start_time)
         frame_count += 1
-
-        # Resize image to 640x640 (ensure it is divisible by 32)
-        image_resized = cv2.resize(frame, (640, 640))
-
-        # Prepare image (convert to RGB, normalize, etc.)
-        image = cv2.cvtColor(image_resized, cv2.COLOR_BGR2RGB)  # Convert to RGB
-        image = image.astype(np.float32) / 255.0  # Normalize the image to [0, 1]
-
-        # Convert the image to a tensor and change shape from HWC (Height, Width, Channels) to BCHW (Batch, Channels, Height, Width)
-        image = torch.tensor(image).unsqueeze(0).float()  # Convert to tensor and add batch dimension
-        image = image.permute(0, 3, 1, 2)  # Change shape to (1, 3, 640, 640)
-
-        # Measure time on CPU
-        cpu_time, _ = run_inference_on_device("cpu", model, image)
-        cpu_total_time += cpu_time
-
-        # Measure time on GPU (if available)
-        if torch.cuda.is_available():
-            gpu_time, _ = run_inference_on_device("cuda", model, image)
-            gpu_total_time += gpu_time
 
     cap.release()
 
-    # Calculate the total time for CPU and GPU processing
-    print(f"Processed {frame_count} frames")
-    print(f"Total time on CPU: {cpu_total_time:.4f} seconds")
-    if torch.cuda.is_available():
-        print(f"Total time on GPU: {gpu_total_time:.4f} seconds")
-    else:
-        print("No GPU available for comparison.")
-
-    # Calculate and print average time per frame
-    print(f"Average time per frame on CPU: {cpu_total_time / frame_count:.4f} seconds")
-    if torch.cuda.is_available():
-        print(f"Average time per frame on GPU: {gpu_total_time / frame_count:.4f} seconds")
+    avg_time_per_frame = (total_time / frame_count) * 1000 if frame_count > 0 else 0  # Convert to ms
+    return avg_time_per_frame
 
 
-# Example: Compare performance on a video
-video_path = "1.mp4"  # Replace with your video file path
-compare_performance_on_video(video_path)
+# Run the test
+model, transform, device = initialize_depth_anything()
+
+# Measure f1
+avg_time_f1 = measure_avg_time(VIDEO_PATH, f1, model, transform, device)
+print(f"Average processing time per frame for f1: {avg_time_f1:.2f} ms")
+
+# Measure f2
+avg_time_f2 = measure_avg_time(VIDEO_PATH, f2, model, transform, device)
+print(f"Average processing time per frame for f2: {avg_time_f2:.2f} ms")
