@@ -17,7 +17,7 @@ The system combines computer vision, depth estimation, and autonomous navigation
 
 1. Clone this repository:
     ```bash
-    git clone https://github.com/your-username/FinalProjectTELLO.git
+    git clone https://github.com/MatanBaadani/FinalProjectTELLO.git
     cd FinalProjectTELLO
     ```
 
@@ -32,7 +32,7 @@ The system combines computer vision, depth estimation, and autonomous navigation
 
 1. Start the program:
     ```bash
-    python main.py
+    python depth-anything-main/depth+map+target_user.py
     ```
 
 2. Follow the on-screen instructions. The drone will:
@@ -51,4 +51,4 @@ Thank you to the developers and the open-source community!
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](drone-Detection/LICENSE) file for details.
