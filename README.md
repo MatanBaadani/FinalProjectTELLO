@@ -32,8 +32,7 @@ The drone is tasked with navigating from a known **user** to a known **target** 
 
 In the example below, you can clearly see how an open door appears as a black rectangle in the depth map, making it easily detectable.
 
-![Open door in depth map](https://github.com/MatanBaadani/FinalProjectTELLO/blob/main/drone-Detection/depth_model_3.jpg?raw=true)
-
+![Open door in depth map](https://github.com/MatanBaadani/FinalProjectTELLO/raw/main/drone-Detection/depth_model_3.jpg)
 ## Sources and Credits
 
 This project uses the following open-source resources:
