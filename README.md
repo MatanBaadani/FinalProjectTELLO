@@ -28,6 +28,11 @@ The drone is tasked with navigating from a known **user** to a known **target** 
   A custom-trained model was used to detect **open doors**.  
   The model was trained on **depth images** of doors instead of RGB images, as open doors are clearly distinguishable in depth maps by a black rectangle (indicating deep background behind the doorframe).
 
+## 🖼️ Example: Open Door in Depth Map
+
+In the example below, you can clearly see how an open door appears as a black rectangle in the depth map, making it easily detectable.
+
+![Open door in depth map](https://github.com/MatanBaadani/FinalProjectTELLO/blob/main/drone-Detection/demo_images/depth_door_example.jpg?raw=true)
 
 ## Sources and Credits
 
