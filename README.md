@@ -1,44 +1,33 @@
 # FinalProjectTELLO
 
-## Overview
-**FinalProjectTELLO** is an autonomous drone project using the DJI Tello.  
-The drone flies indoors, exploring rooms autonomously while searching for a known target — a recognized face of Elon Musk.  
-Additionally, the drone constructs a map showing the optimal route from a known user's position (another known face) to the target.
+# Autonomous Indoor Drone Navigation Using Computer Vision
 
-The system combines computer vision, depth estimation, and autonomous navigation, powered by several open-source libraries and models.
+This project was developed as part of my final project for the B.Sc. in Electrical Engineering at Tel Aviv University.
 
-## Features
-- Real-time face detection and recognition (known faces: Elon Musk and user)
-- Indoor autonomous navigation
-- Depth estimation for detecting open doors and accessible paths
-- Dynamic mapping from user location to target
+##  Project Overview
 
-## Installation
+The goal of this project is to develop an **autonomous drone** capable of navigating a **closed indoor environment** using **only computer vision**, with no external sensors or GPS.
 
-1. Clone this repository:
-    ```bash
-    git clone https://github.com/MatanBaadani/FinalProjectTELLO.git
-    cd FinalProjectTELLO
-    ```
+The drone is tasked with navigating from a known **user** to a known **target** within a household environment. It must:
+- Recognize the user and the target using facial recognition.
+- Detect **open doors** within the environment to determine valid passages.
+- Navigate autonomously through open paths while avoiding obstacles.
+- Generate a **live map** of the house as it explores, showing:
+  - The scanned route in **red**
+  - The final optimized path from user to target in **blue**
 
-2. Install the required Python packages:
-    ```bash
-    pip install -r requirements.txt
-    ```
+## Technologies Used
 
-3. Set up your DJI Tello drone and ensure it is connected via Wi-Fi to your computer.
+- **Face Recognition**  
+  Used to identify both the user and the target from the drone’s camera feed.
 
-## Usage
+- **Depth Anything**  
+  A real-time depth estimation model used to convert RGB frames to depth maps efficiently.
 
-1. Start the program:
-    ```bash
-    python depth-anything-main/depth+map+target_user.py
-    ```
+- **YOLOv10 Object Detection**  
+  A custom-trained model was used to detect **open doors**.  
+  The model was trained on **depth images** of doors instead of RGB images, as open doors are clearly distinguishable in depth maps by a black rectangle (indicating deep background behind the doorframe).
 
-2. Follow the on-screen instructions. The drone will:
-   - Take off and begin exploring.
-   - Search for the known user and target faces.
-   - Build and print a navigation map from the user to the target once both are detected.
 
 ## Sources and Credits
 
